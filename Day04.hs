@@ -1,7 +1,4 @@
 import Data.List
-import Data.Array
-import Data.Char
-import Debug.Trace
 
 test = readFile "test04.txt" >>= print . two
 main = readFile "input04.txt" >>= print . two
