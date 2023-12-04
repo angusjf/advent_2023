@@ -7,16 +7,15 @@ two =
     sum .
     map fst .
     f .
-    map (\x -> (1, x)) .
-    map length . 
-    map (\(winners, have) -> intersect winners have) .
-    map parse .
+    zip (repeat 1) .
+    map (length . uncurry intersect . parse) .
     lines
 
 parse :: String -> ([Int], [Int])
-parse ('C':'a':'r':'d':' ':more) = (map read $ words winners, map read $ words have)
-  where (n, ':':numbers) = break (== ':') more
-        (winners, '|':have) = break (== '|') numbers
+parse ('C':'a':'r':'d':' ':more) = (map read $ words $ winners, map read $ words $  have)
+  where (n,    _:numbers) = break (== ':') more
+        (winners, _:have) = break (== '|') numbers
 
-f ((n, x):more) = (n, x) : f ( (map (\(nn, xx) -> (nn + n, xx)) (take x more)) ++ (drop x more) )
+f ((n, x):more) = (n, x) : f ( (map (\(nn, xx) -> (nn + n, xx)) a) ++ b )
+  where (a, b) = splitAt x more
 f [] = []
