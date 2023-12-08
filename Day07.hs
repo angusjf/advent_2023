@@ -12,9 +12,6 @@ pt2 =
   map snd .
   reverse .
   sortBy cmpWithBets .
-  -- unlines .
-  -- map show .
-  -- map (\(c, _) -> (reverse $ sortOn snd $ M.toList $ count c, maxHand c)) .
   map (parse . words) .
   lines
 
