@@ -8,6 +8,6 @@ pt2 =
 
 solve = foldr1 (-) . map head . triangulate
 
-triangulate = takeWhile (not . all (== 0)) . iterate diffs
+triangulate = takeWhile (any (/= 0)) . iterate diffs
 
-diffs xs = zipWith (flip (-)) xs (tail xs)
+diffs xs = zipWith (-) (tail xs) xs
