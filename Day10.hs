@@ -6,14 +6,14 @@ import Debug.Trace
 test = pt2 <$> readFile "test10.txt"
 main = pt2 <$> readFile "input10.txt"
 
-pt2 input = area lp - (fromIntegral (length lp) / 2) + 1
-  where grid = to2dArray $ lines input
-        start = fromJust $ findIndexArray (== 'S') grid
-        lp = map (\(a, b) -> (fromIntegral a, fromIntegral b)) $ loop start D grid
-
 -- pick's theorem
 -- r.i.p.
-numberOfInteriorPoints totalArea numberOfExteriorPoints = totalArea - (fromIntegral numberOfExteriorPoints / 2) + 1
+-- numberOfInteriorPoints = totalArea - (numberOfExteriorPoints / 2) + 1
+
+pt2 input = area lp - length lp `div` 2 + 1
+  where grid = to2dArray $ lines input
+        start = fromJust $ findIndexArray (== 'S') grid
+        lp = loop start D grid
 
 data Direction = U | D | L | R deriving (Show)
 
@@ -46,7 +46,8 @@ move (x, y) D = (x, y + 1)
 move (x, y) R = (x + 1, y)
 move (x, y) L = (x - 1, y)
 
-area points = abs $ sum (zipWith f points (drop 1 (cycle points))) / 2
+-- shoestring
+area points = abs $ sum (zipWith f points (drop 1 (cycle points))) `div` 2
   where f (x1, y1) (x2, y2) = x1 * y2 - x2 * y1
 
 -- array helpers
