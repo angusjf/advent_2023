@@ -1,17 +1,14 @@
 import Data.List
-import Data.Maybe
-import Data.Tuple
 import qualified Data.Map as M
-import Debug.Trace
+import Control.Monad.State
 
 test = pt2 <$> readFile "test12.txt"
 main = pt2 <$> readFile "input12.txt"
 
--- pt1 input = map (uncurry solve . parse) $ lines input
+pt2 = map (uncurry solveWithCache . scale . parse) . lines
 
-pt2 input = map (fst . uncurry (solveCache M.empty) . scale . parse) $ lines input
-
-scale (springs, breaks) = (concat $ intersperse "?" $ take 5 $ repeat springs, concat $ take 5 $ repeat breaks)
+scale (springs, breaks) = (concat $ intersperse "?" $ fiveX springs, concat $ fiveX breaks)
+  where fiveX = take 5 . repeat 
 
 parse :: [Char] -> (String, [Int])
 parse l =
@@ -26,34 +23,33 @@ split f s =
         ( a,  []) -> [a]
         ( a, _:b) -> [a] ++ split f b
 
-type Cache = M.Map (String, [Int]) Int
+solveCache springs breaks = do
+    cache <- get
+    case M.lookup (springs, breaks) cache of
+        Just x -> return x
+        Nothing -> do
+            res <- solve springs breaks
+            modify (M.insert (springs, breaks) res)
+            return res
 
-solveCache  :: Cache -> String -> [Int] -> (Int, Cache)
-solveCache dict springs breaks =
-    case M.lookup (springs, breaks) dict of
-	Just x -> (x, dict)
-	Nothing ->
-	    let
-	      (res, dict') = solve dict springs breaks
-	      dict'' = M.insert (springs, breaks) res dict'
-	    in
-	      (res, dict'')
+solve "" [] = return 1
 
-solve :: Cache -> String -> [Int] -> (Int, Cache)
-solve c "" [] = (1, c)
-solve c "" _  = (0, c)
+solve "" _  = return 0
 
-solve c springs [] = (if '#' `elem` springs then 0 else 1, c)
+solve springs [] = return $ if '#' `elem` springs then 0 else 1
 
-solve c ('.':springs) breaks = solveCache c springs breaks
+solve ('.':springs) breaks = solveCache springs breaks
+solve ('?':springs) breaks = do
+    x <- solveCache ('.':springs) breaks
+    y <- solveCache ('#':springs) breaks
+    return $ x + y
 
-solve c ('?':springs) breaks = (x + y, dict'')
-  where (x, dict') = solveCache c ('.':springs) breaks
-        (y, dict'') = solveCache dict' ('#':springs) breaks
+solve ('#':springs) (b:breaks) = do
+    if b <= length springs + 1
+        && not ('.' `elem` take (b - 1) springs)
+        && (b == length springs + 1 || springs !! (b - 1) /= '#')
+        then solveCache (drop b springs) breaks
+        else return 0
 
-solve c ('#':springs) (b:breaks) =
-        if b <= length springs + 1
-	&& not ('.' `elem` take (b - 1) springs)
-	&& (b == length springs + 1 || springs !! (b - 1) /= '#')
-	  then solveCache c (drop b springs) breaks
-          else (0, c)
+solveWithCache :: String -> [Int] -> Int
+solveWithCache springs breaks = evalState (solve springs breaks) M.empty
