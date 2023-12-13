@@ -22,8 +22,12 @@ solve grid =
 	  Just x -> Vertical x
 	  Nothing -> NoFold
 
-sym grid n = all id $ zipWith (==) a b
+sym grid n = onlyOne1 $ zipWith diff a b
   where (a, b) = reflect n grid
+        onlyOne1 xs = length (filter (== 1) xs) == 1 && length (filter (== 0) xs) == (length xs - 1)
+
+diff :: String -> String -> Int
+diff as bs = sum $ zipWith (\a b -> if a == b then 0 else 1) as bs
 
 reflect n xs = (drop (la -| lb) a, drop (lb -| la) $ reverse b)
   where (a, b) = splitAt n xs
