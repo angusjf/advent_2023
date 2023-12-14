@@ -5,7 +5,7 @@ import Control.Monad.State
 test = pt2 <$> readFile "test12.txt"
 main = pt2 <$> readFile "input12.txt"
 
-pt2 = map (uncurry solveWithCache . scale . parse) . lines
+pt2 = map (runMemoized solve . scale . parse) . lines
 
 scale (springs, breaks) = (concat $ intersperse "?" $ fiveX springs, concat $ fiveX breaks)
   where fiveX = take 5 . repeat 
@@ -17,39 +17,42 @@ parse l =
   )
   where (springs, _:breaks) = break (== ' ') l
 
+solve ("", []) = return 1
+
+solve ("", _)  = return 0
+
+solve (springs, []) = return $ if '#' `elem` springs then 0 else 1
+
+solve ('.':springs, breaks) = memoized solve (springs, breaks)
+solve ('?':springs, breaks) = do
+    x <- memoized solve ('.':springs, breaks)
+    y <- memoized solve ('#':springs, breaks)
+    return $ x + y
+
+solve ('#':springs, b:breaks) = do
+    if b <= length springs + 1
+        && not ('.' `elem` take (b - 1) springs)
+        && (b == length springs + 1 || springs !! (b - 1) /= '#')
+        then memoized solve (drop b springs, breaks)
+        else return 0
+
+-- helpers --
+
 split f s =
     case break f s of
         ([], _:b) -> split f b
         ( a,  []) -> [a]
         ( a, _:b) -> [a] ++ split f b
 
-solveCache springs breaks = do
+memoized :: Ord x => (x -> State (M.Map x y) y) -> x -> State (M.Map x y) y
+memoized f x = do
     cache <- get
-    case M.lookup (springs, breaks) cache of
-        Just x -> return x
+    case M.lookup x cache of
+        Just hit -> return hit
         Nothing -> do
-            res <- solve springs breaks
-            modify (M.insert (springs, breaks) res)
+            res <- f x
+            modify (M.insert x res)
             return res
 
-solve "" [] = return 1
-
-solve "" _  = return 0
-
-solve springs [] = return $ if '#' `elem` springs then 0 else 1
-
-solve ('.':springs) breaks = solveCache springs breaks
-solve ('?':springs) breaks = do
-    x <- solveCache ('.':springs) breaks
-    y <- solveCache ('#':springs) breaks
-    return $ x + y
-
-solve ('#':springs) (b:breaks) = do
-    if b <= length springs + 1
-        && not ('.' `elem` take (b - 1) springs)
-        && (b == length springs + 1 || springs !! (b - 1) /= '#')
-        then solveCache (drop b springs) breaks
-        else return 0
-
-solveWithCache :: String -> [Int] -> Int
-solveWithCache springs breaks = evalState (solve springs breaks) M.empty
+runMemoized :: (x -> State (M.Map x y) y) -> x -> y
+runMemoized f x = evalState (f x) M.empty
