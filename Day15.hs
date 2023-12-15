@@ -10,23 +10,21 @@ pt2 =
   sum .
   concatMap (\(k, v) -> map ((k + 1) *) (zipWith (*) [1..] $ map snd $ v)) .
   M.assocs .
-  run M.empty .
+  foldl run M.empty .
   split (== ',') .
   init
 
 type Dict = M.Map Int [(String, Int)]
 
-run :: Dict -> [String] -> Dict
+run :: Dict -> String -> Dict
 
-run dict (i:is) | last i == '-' = run ( M.adjust (remove key) (hash key) dict ) is
+run dict i | last i == '-' = M.adjust (remove key) (hash key) dict
 	where key = init i
 
-run dict (i:is) =
-  run ( M.insertWith ins (hash key) [(key, v)] dict ) is
+run dict i =
+   M.insertWith ins (hash key) [(key, v)] dict
   where v = read n :: Int
         (key, '=':n) = break (== '=') i
-
-run d [] = d
 
 ins [(key, v)] [] = [(key, v)]
 ins [(key, v)] ((k1, v1):more) =
