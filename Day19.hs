@@ -1,3 +1,5 @@
+-- stack dict (Always "in")
+
 import Data.Char
 import Data.List
 import Data.Map qualified as M
@@ -8,31 +10,30 @@ test = pt2 <$> readFile "test19.txt"
 
 main = pt2 <$> readFile "input19.txt"
 
-pt2 input = sum $ map (\(a, b, c, d) -> a + b + c + d) $ filter (solve "in" (M.fromList $ map parseWorkflow workflows)) (map parsePart parts)
+pt2 input = stack dict (Always "in")
   where
     (workflows, _ : parts) = break null (lines input)
+    xmas = [('x', [Always "id"]), ('m', [Always "id"]), ('a', [Always "id"]), ('s', [Always "id"])]
+    dict = M.fromList $ map parseWorkflow workflows
 
 -- lhr{s<2678:A,x>1197:R,x>1073:R,R}
 
 parseWorkflow input =
   let (ident, '{' : more) = break (== '{') input
       rules = split (== ',') $ init more
-   in (ident, map parseRule (init rules) ++ [\_ -> Just (last rules)])
+   in (ident, map (Conditional . parseRule) (init rules) ++ [Always (last rules)])
 
-type Rule = String
+data Rule = Conditional (Char, Op, Int, String) | Always String deriving (Show)
 
-parseRule :: String -> (Int, Int, Int, Int) -> Maybe String
-parseRule (c : op : rest) (x, m, a, s) = if op' c' (read n) then Just next else Nothing
+data Op = LessThan | GreaterThan deriving (Show)
+
+parseRule :: String -> (Char, Op, Int, String)
+parseRule (c : op : rest) = (c, op', read n, next)
   where
-    c' = case c of
-      'x' -> x
-      'm' -> m
-      'a' -> a
-      's' -> s
     (n, ':' : next) = break (== ':') rest
     op' = case op of
-      '<' -> (<)
-      '>' -> (>)
+      '<' -> LessThan
+      '>' -> GreaterThan
       e -> error (show (c, op, rest))
 
 split f s =
@@ -41,20 +42,19 @@ split f s =
     (a, []) -> [a]
     (a, _ : b) -> a : split f b
 
--- {x=468,m=844,a=1657,s=193}
+data T = Node [T] | Accept | Reject | Fork Char Op Int T deriving (Show)
 
-parsePart :: String -> (Int, Int, Int, Int)
-parsePart part = (x, m, a, s)
-  where
-    [x, m, a, s] = map read $ init $ split (not . isNumber) part
+stack dict rule =
+  case rule of
+    Always "A" -> Accept
+    Always "R" -> Reject
+    Always id -> Node $ map (stack dict) (dict M.! id)
+    Conditional (c, op, n, next) -> Fork c op n $ stack dict (Always next)
 
-solve ident dict xmas =
-  case applyAll (dict M.! ident) xmas of
-    "A" -> True
-    "R" -> False
-    next -> solve next dict xmas
+solve Accept = (4000, 4000, 4000, 4000)
+solve Reject = (0, 0, 0, 0)
+solve (Node xs) = foldl1' combine (map solve xs)
 
-applyAll :: [a -> Maybe b] -> a -> b
-applyAll (f : fs) x = case f x of
-  Just y -> y
-  Nothing -> applyAll fs x
+-- solve (Fork 'x' op n next) =
+
+combine (a, b, c, d) (x, y, z, q) = (a, b, c, d)
