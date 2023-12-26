@@ -2,7 +2,6 @@ import Data.Array
 import Data.Char (digitToInt)
 import Data.List (transpose)
 import Data.Set qualified as S
-import Debug.Trace (trace)
 
 test = readFile "test17.txt" >>= print . pt2
 
