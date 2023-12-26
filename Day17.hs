@@ -1,7 +1,8 @@
 import Data.Array
-import Data.Char
-import Data.List
+import Data.Char (digitToInt)
+import Data.List (transpose)
 import Data.Set qualified as S
+import Debug.Trace (trace)
 
 test = readFile "test17.txt" >>= print . pt2
 
@@ -26,11 +27,12 @@ dijkstra grid visited unvisited
         (S.insert (pos, dir) visited)
         ( S.union
             ( S.fromList
-                [ f grid len x
-                  | next <- turn dir,
-                    n <- [1 .. 3],
-                    let x = map (,next) $ take n $ tail $ iterate (move next) pos,
-                    all (inBounds grid . fst) x
+                [ (len', (pos', dir'))
+                  | dir' <- turn dir,
+                    path <- take (maxPathLength - minPathLength + 1) $ drop minPathLength $ iterate (\path -> move dir' (head path) : path) [pos],
+                    let pos' = head path,
+                    inBounds grid pos',
+                    let len' = len + sum (map (grid !) (init path))
                 ]
             )
             unvisited'
@@ -38,13 +40,15 @@ dijkstra grid visited unvisited
   where
     ((len, (pos, dir)), unvisited') = S.deleteFindMin unvisited
 
-f :: Array (Int, Int) Int -> Int -> [((Int, Int), Dir)] -> (Int, ((Int, Int), Dir))
-f grid cc [c@(p, _)] = (cc + grid ! p, c)
-f grid cc ((p, _) : cs) = f grid (cc + (grid ! p)) cs
+maxPathLength = 10
+
+minPathLength = 4
 
 inBounds grid (y, x) = y >= 0 && x >= 0 && y <= my && x <= mx where ((0, 0), (mx, my)) = bounds grid
 
-turn dir = if dir == W || dir == E then [N, S] else [W, E]
+turn W = [N, S]
+turn E = [N, S]
+turn _ = [W, E]
 
 move N (x, y) = (x, y - 1)
 move S (x, y) = (x, y + 1)
