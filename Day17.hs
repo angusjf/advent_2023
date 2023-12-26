@@ -1,66 +1,52 @@
-import Data.Array (Array, assocs, bounds, listArray, (!))
-import Data.Char (digitToInt)
-import Data.Function (on)
-import Data.List (minimumBy, transpose)
-import Data.Map (Map)
-import Data.Map qualified as M
-import Data.Set (Set)
+import Data.Array
+import Data.Char
+import Data.List
 import Data.Set qualified as S
-import Debug.Trace (trace)
 
-test = pt2 <$> readFile "test17.txt"
+test = readFile "test17.txt" >>= print . pt2
 
 main = readFile "input17.txt" >>= print . pt2
 
 to2dArray :: [String] -> Array (Int, Int) Char
 to2dArray ls = listArray ((0, 0), (length (head ls) - 1, length ls - 1)) (concat $ transpose ls)
 
-pt2 s = solve grid S.empty ((0, 0), E, 0)
+data Dir = N | S | W | E deriving (Eq, Ord, Show)
+
+pt2 input = dijkstra grid S.empty (S.fromList [(0, ((0, 0), E)), (0, ((0, 0), S))])
   where
-    grid = fmap digitToInt $ to2dArray $ lines s
+    grid = fmap digitToInt (to2dArray (lines input))
 
-data Dir = N | E | S | W deriving (Eq, Ord, Show)
-
-inBounds :: Array (Int, Int) Int -> ((Int, Int), Dir, Int) -> Bool
-inBounds grid ((x, y), _, _) = x >= 0 && y >= 0 && x <= mx && y <= my
+dijkstra :: Array (Int, Int) Int -> S.Set ((Int, Int), Dir) -> S.Set (Int, ((Int, Int), Dir)) -> Int
+dijkstra grid visited unvisited
+  | pos == snd (bounds grid) = len
+  | S.member (pos, dir) visited = dijkstra grid visited unvisited'
+  | otherwise =
+      dijkstra
+        grid
+        (S.insert (pos, dir) visited)
+        ( S.union
+            ( S.fromList
+                [ f grid len x
+                  | next <- turn dir,
+                    n <- [1 .. 3],
+                    let x = map (,next) $ take n $ tail $ iterate (move next) pos,
+                    all (inBounds grid . fst) x
+                ]
+            )
+            unvisited'
+        )
   where
-    (_, (mx, my)) = bounds grid
+    ((len, (pos, dir)), unvisited') = S.deleteFindMin unvisited
 
-turn N = [W, E]
-turn E = [N, S]
-turn S = [E, W]
-turn W = [S, N]
+f :: Array (Int, Int) Int -> Int -> [((Int, Int), Dir)] -> (Int, ((Int, Int), Dir))
+f grid cc [c@(p, _)] = (cc + grid ! p, c)
+f grid cc ((p, _) : cs) = f grid (cc + (grid ! p)) cs
 
-move (x, y) N = (x, y - 1)
-move (x, y) S = (x, y + 1)
-move (x, y) E = (x + 1, y)
-move (x, y) W = (x - 1, y)
+inBounds grid (y, x) = y >= 0 && x >= 0 && y <= my && x <= mx where ((0, 0), (mx, my)) = bounds grid
 
-neighbors (pos, dir, n) =
-  ( do
-      dir' <- turn dir
-      return (move pos dir', dir', 0)
-  )
-    ++ [(move pos dir, dir, n + 1) | n < 2]
+turn dir = if dir == W || dir == E then [N, S] else [W, E]
 
-solve grid visited start =
-  map snd $
-    filter (\((pos, _, _), _) -> let (_, end) = bounds grid in pos == end) $
-      M.assocs $
-        dijkstra
-          (\(pos, dir, n) -> grid ! pos)
-          (filter (inBounds grid) . neighbors)
-          S.empty
-          (S.singleton start)
-          (M.singleton start 0)
-
-dijkstra _ _ _ unvisited costs | S.null unvisited = costs
-dijkstra edgeCost neighbours visited unvisited costs =
-  dijkstra
-    edgeCost
-    neighbours
-    (S.insert current visited)
-    (S.fromList (filter (`S.notMember` visited) (neighbours current)) `S.union` S.delete current unvisited)
-    (M.unionWith min (M.fromList $ map (\e -> (e, costs M.! current + edgeCost e)) (neighbours current)) costs)
-  where
-    current = minimumBy (compare `on` (costs M.!)) unvisited
+move N (x, y) = (x, y - 1)
+move S (x, y) = (x, y + 1)
+move W (x, y) = (x - 1, y)
+move E (x, y) = (x + 1, y)
