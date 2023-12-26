@@ -19,14 +19,15 @@ solve (x, y) visited grid | (x, y) == (mx - 1, my) = 0
   where
     ((0, 0), (mx, my)) = bounds grid
 solve next visited grid =
-  1
-    + maximum
-      [ solve p (S.insert next visited) grid
-        | (dir, p@(nx, ny)) <- adj next,
-          S.notMember p visited,
-          nx >= 0 && ny >= 0 && nx <= mx && ny <= my,
-          compatible dir (grid ! p)
-      ]
+  trace (show next) $
+    1
+      + maximum'
+        [ solve p (S.insert next visited) grid
+          | (dir, p@(nx, ny)) <- adj next,
+            S.notMember p visited,
+            nx >= 0 && ny >= 0 && nx <= mx && ny <= my,
+            grid ! p /= '#'
+        ]
   where
     ((0, 0), (mx, my)) = bounds grid
 
@@ -37,10 +38,5 @@ deleteFindMin visited = (head l, S.fromList (tail l))
   where
     l = sortBy (\((_, _), a) ((_, _), b) -> compare b a) $ S.toList visited
 
-compatible _ '.' = True
-compatible _ '#' = False
-compatible N '^' = True
-compatible E '>' = True
-compatible W '<' = True
-compatible S 'v' = True
-compatible _ _ = False
+maximum' [] = 0
+maximum' x = maximum x

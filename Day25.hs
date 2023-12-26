@@ -1,16 +1,18 @@
-import qualified Data.Map as M
-import qualified Data.Set as S
+import Data.Array qualified as A
+import Data.Graph qualified as G
+import Data.Map qualified as M
+import Data.Set qualified as S
 
 test = pt2 <$> readFile "test25.txt"
+
 main = pt2 <$> readFile "input25.txt"
 
-pt2 input = let xs = map parse $ lines input in solve (M.fromList xs) (S.fromList $ map fst xs)
+pt2 input = graph
+  where
+    withoutMissing = M.fromList $ map parse $ lines input
+    dict = M.union withoutMissing (M.fromList [(k, []) | k <- concat (M.elems withoutMissing)])
+    (graph, nodeFromVertex, vertexFromKey) = G.graphFromEdges [(k, k, vs) | (k, vs) <- M.toList dict]
 
-parse line = let w:ws = words line in (init w, ws)
+parse line = let w : ws = words line in (init w, ws)
 
-solve dict xs =
-  let (next, more) = S.deleteFindMin xs in solve' dict next more
-
-solve' dict next more =
-  let result = map (\n -> solve' dict n more) (dict M.! next)
-   in
+mincut graph w
